@@ -38,6 +38,10 @@ Data Completeness: The dataset was checked for both:
 This was done separately because missing values from a CSV import can be represented differently after being imported into                a database.The initial profiling results showed no significant missing-value issues in the dataset.
 Any missing values identified during later stages will be investigated further.
 
+Duplicate Profiling: The raw dataset was reviewed for duplicate records to understand whether duplicate data was present in the source dataset. 
+No duplicate records were identified during initial profiling phase. 
+no records were removed or modified.
+
 Categorical Profiling: Distinct values were reviewed for several categorical fields, including:
 
 Category: Electronics, Sports, Beauty, Home and Clothing.
