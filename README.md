@@ -158,5 +158,36 @@ This is not currently considered a data-quality issue because the expected selle
 <img width="436" height="75" alt="Xseller_rating_min_max" src="https://github.com/user-attachments/assets/29c5bde1-081a-4c3e-8720-28be2f8e3255" />
 
 
+DATA QUALITY INVESTIGATION — SUMMARY OF FINDINGS:
+
+Following initial profiling, five observations were investigated in depth. No changes were made to the raw “amazon_org” table during this phase; all fixes will be applied during Staging and Data Transformation.
+
+1. Rating / Review Count Column Swap — Confirmed
+Values in “rating” and “review_count” are swapped. “rating” currently holds “review_count” range data (up to 3,408); “review_count” holds “rating”range data (1.5–5). All rating values are whole numbers, consistent with a typical rating scale. Will be corrected in staging.
+<img width="281" height="231" alt="data_quality_reviewcount rating" src="https://github.com/user-attachments/assets/246be485-5284-452c-b297-f46e4b5c906f" />
+
+2. Brand-Category Association — Confirmed, Data Limitation
+Every brand appears across every category and subcategory (16 subcategories per brand), with no logical brand-to-category relationship in the source data. This is treated as a limitation of the dataset rather than a correctable error; no brand-category relationship table will be modeled during normalization.
+<img width="395" height="164" alt="data_quality_brandsinsubcategories" src="https://github.com/user-attachments/assets/65ed624d-706d-439e-a625-29cb3d6e91e8" />
+
+3. Discount and Final Price Calculation — Resolved
+Initial checks assumed discount was a flat currency amount, which produced mismatches against “final_price” for all records. Re-testing confirmed discount is a percentage: final_price ≈ price − (price × discount/100), with residual differences of roughly $0.01–$2.50 attributable to rounding. No correction applied to final_price.
+<img width="392" height="221" alt="data_quality_price_difference" src="https://github.com/user-attachments/assets/5ba03096-fd2b-48a9-8230-630204d65d3e" />
+<img width="440" height="263" alt="data_quality_price_discountpercentage" src="https://github.com/user-attachments/assets/95bfadc6-4dd9-43ad-aebb-25a56ccf8f87" />
+
+
+4. Discount Presence — Data Limitation
+100% of records contain a non-zero discount value. This is inconsistent with typical real-world e-commerce data, where a portion of products are typically sold at full price. Flagged as a dataset limitation, not a correctable error.
+   
+5. Seller Rating Range — Data Limitation
+“seller_rating” ranges from 2.5–5.0, with no values below 2.5 observed across the dataset. This is an unusually narrow distribution for a 0–5 scale, suggesting an artificially bounded range in the source data. Flagged as a dataset limitation.
+
+6. Stock Values — Not an Issue
+No negative stock values were found.
+
+7. Purchase Date Plausibility — Validated
+“purchase_date” is currently stored in a non-ISO format (e.g., 8/5/2023, 08/15/2023) and will be converted to ISO format during the Staging and Data Transformation phase. Before converting, the month, day, and year were checked separately to confirm the values make sense: month range 1–12, day range 1–31, year range 2024–2026. All values are valid and consistent with the expected format.
+<img width="406" height="283" alt="data_quality_date" src="https://github.com/user-attachments/assets/0d43367f-d4a9-4223-8c34-170f7e1c37a7" />
+
               
 
