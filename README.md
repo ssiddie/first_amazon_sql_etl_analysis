@@ -189,5 +189,17 @@ No negative stock values were found.
 “purchase_date” is currently stored in a non-ISO format (e.g., 8/5/2023, 08/15/2023) and will be converted to ISO format during the Staging and Data Transformation phase. Before converting, the month, day, and year were checked separately to confirm the values make sense: month range 1–12, day range 1–31, year range 2024–2026. All values are valid and consistent with the expected format.
 <img width="406" height="283" alt="data_quality_date" src="https://github.com/user-attachments/assets/0d43367f-d4a9-4223-8c34-170f7e1c37a7" />
 
-              
+STAGING AND DATA TRANSFORMATION:
+
+Actions performed on amazon_temp (copied from raw amazon_org):
+
+Dropped brand column — as per data quality investigation # 2, brand has no logical tie to category/subcategory. Column "brand" was excluded from the working table rather than modeled into a relationship.
+
+Trimmed whitespace across all text and date columns (user_id, product_id, category, subcategory, seller_id, purchase_date, location, order_device, payment_method, is_returned, delivery_status).
+
+Corrected the rating/review_count column swap by renaming columns: the original review_count (holding true rating values) was renamed to ratings; the original rating (holding true review-count values) was renamed to review_count.
+
+Converted review_count to INTEGER affinity, since all values were confirmed whole numbers during investigation. Achieved by adding a new integer column, copying values over, dropping the old column, and renaming the new one.
+
+Standardized purchase_date to ISO 8601 format (YYYY-MM-DD) across all four observed patterns (MM/DD/YYYY, M/D/YYYY, MM/D/YYYY, M/DD/YYYY), with month/day order and zero-padding corrected so all resulting dates are recognized by SQLite's date()/strftime() functions.              
 
