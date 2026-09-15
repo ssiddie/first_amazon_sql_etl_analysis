@@ -8,23 +8,20 @@ Project Workflow
 
 This project follows the workflow below:
 
-Raw Data
-   ↓
-Initial Data Profiling
-   ↓
-Profiling Observations
-   ↓
-Data Quality Investigation
-   ↓
-Staging and Data Transformation
-   ↓
-Staged Data Validation
-   ↓
+PART 1 :
+Raw Data --
+Initial Data Profiling --
+Profiling Observations --
+Data Quality Investigation --
+Staging and Data Transformation --
+Staged Data Validation --
 Data Normalization
-   ↓
-Business Analysis
-   ↓
-Dashboard and Final Insights
+
+PART 2:
+Business Analysis --
+Dashboard and Final Insights.
+
+Amazon E-Commerce Data Analysis Project PART 1:
 
 INITIAL PROFILING:
 
