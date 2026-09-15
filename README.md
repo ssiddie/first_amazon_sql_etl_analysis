@@ -157,7 +157,7 @@ This is not currently considered a data-quality issue because the expected selle
 
 DATA QUALITY INVESTIGATION — SUMMARY OF FINDINGS:
 
-Following initial profiling, five observations were investigated in depth. No changes were made to the raw “amazon_org” table during this phase; all fixes will be applied during Staging and Data Transformation.
+Following initial profiling, seven observations were investigated in depth. No changes were made to the raw “amazon_org” table during this phase; all fixes will be applied during Staging and Data Transformation.
 
 1. Rating / Review Count Column Swap — Confirmed
 Values in “rating” and “review_count” are swapped. “rating” currently holds “review_count” range data (up to 3,408); “review_count” holds “rating”range data (1.5–5). All rating values are whole numbers, consistent with a typical rating scale. Will be corrected in staging.
@@ -182,7 +182,7 @@ Initial checks assumed discount was a flat currency amount, which produced misma
 6. Stock Values — Not an Issue
 No negative stock values were found.
 
-7. Purchase Date Plausibility — Validated
+7. Purchase Date — Validated
 “purchase_date” is currently stored in a non-ISO format (e.g., 8/5/2023, 08/15/2023) and will be converted to ISO format during the Staging and Data Transformation phase. Before converting, the month, day, and year were checked separately to confirm the values make sense: month range 1–12, day range 1–31, year range 2024–2026. All values are valid and consistent with the expected format.
 <img width="406" height="283" alt="data_quality_date" src="https://github.com/user-attachments/assets/0d43367f-d4a9-4223-8c34-170f7e1c37a7" />
 
@@ -198,5 +198,107 @@ Corrected the rating/review_count column swap by renaming columns: the original 
 
 Converted review_count to INTEGER affinity, since all values were confirmed whole numbers during investigation. Achieved by adding a new integer column, copying values over, dropping the old column, and renaming the new one.
 
+Renamed discount column to discount_percent since the original column values were stored in percentage and not as a dollar amount.
+
 Standardized purchase_date to ISO 8601 format (YYYY-MM-DD) across all four observed patterns (MM/DD/YYYY, M/D/YYYY, MM/D/YYYY, M/DD/YYYY), with month/day order and zero-padding corrected so all resulting dates are recognized by SQLite's date()/strftime() functions.              
 
+STAGED DATA VALIDATION:
+
+After completing the staging and transformation process, the amazon_temp table was validated to make sure the cleaning steps were applied correctly and no data was accidentally lost or changed.
+
+Row count Validation: counted rows for "amazon_org" and "amazon_temp" table side by side to validate both tables have equal number of rows.
+<img width="299" height="77" alt="validation_rows" src="https://github.com/user-attachments/assets/6f282c2a-46b6-4def-90cb-3174b13c9e20" />
+
+
+Date Validation: Three queries were run for this validation, the first one with a sample of 20 rows from both "amazon_org" and "amazon_temp" tables side by side to visually see the placement of month, day and year in its appropriate place,
+the second query to validate that all purchase dates are in ISO format i.e YYYY-MM-DD and the last query was to validate that no accidental Nulls were introduced while converting the dates into ISO format.<img width="565" height="125" alt="validation_dateformat" src="https://github.com/user-attachments/assets/d070f22a-0619-453f-bf67-65538ea535b4" />
+
+
+Product Validation: Counted distinct products from both tables to confirm both tables have equal number of distinct products.
+<img width="384" height="81" alt="validation_distinct_products" src="https://github.com/user-attachments/assets/26aaa26f-fe83-49f1-af55-415096fa3c16" />
+
+
+Discount Validation: Confirmed that only the discount column name was changed to discount percentage while all the values inside the column remained the same.
+<img width="323" height="80" alt="validation_discountpercent" src="https://github.com/user-attachments/assets/2098d7a7-dedb-4ae5-93cb-da6f01dc508d" />
+
+
+Review count and ratings validation: The corrected ratings and review_count columns were compared with their original values using rowid. This confirmed that the values were transferred to the correct columns after fixing the column swap identified during Data Quality Investigation.
+
+These checks confirmed that the data was transformed successfully while preserving the original records.
+
+DATA NORMALIZATION:
+
+After cleaning and validating the staging table, the data was normalized into separate tables to reduce repeated data and organize the dataset into logically into different tables.
+
+Four normalized tables were created:
+
+Products:
+Contains one record for each unique product. Product-related information includes:
+
+product_id, category, subcategory, price, rating, review_count, and stock.
+
+Sellers:
+Contains one record for each unique seller, including:
+
+seller_id and seller_rating.
+
+Users:
+Contains one record for each unique user:
+
+user_id.
+
+Orders:
+Contains the transactional information from the staging table, including:
+
+order_id, user_id, product_id, seller_id, discount_percent, final_price, purchase_date, shipping_time_days, location, order_device, payment_method, is_returned, and delivery_status.
+
+A new order_id was created as an INTEGER PRIMARY KEY AUTOINCREMENT because the source dataset did not contain a unique order identifier.
+
+Foreign keys were created in the orders table to connect:
+
+orders.user_id    → users.user_id
+orders.product_id → products.product_id
+orders.seller_id  → sellers.seller_id
+
+CHECK constraints were also added where appropriate to help maintain valid values, including non-negative prices, valid rating ranges, valid payment methods, return status, and delivery status.
+
+DATA INSERTION:
+
+After creating the normalized tables, data was inserted from the cleaned amazon_temp staging table.
+The most recent seller_rating was used when inserting into sellers table.
+Distinct IDs along with most recent "purchase_date" were used when inserting records into the sellers, and products tables so that each entity not only appears once but also contains the most recent ratings and review count.
+Since the original table did not have any information on users others than user ids therefore distinct user_id was used to insert it into "users" table.
+All transaction-level records were inserted into the orders table. The newly generated order_id provides a unique identifier for each order while the foreign keys connect each order to its related user, product, and seller.
+
+The staging table "amazon_temp" remained available during this process so the normalized tables could be compared against the cleaned source data during validation.
+
+NORMALIZED DATA VALIDATION:
+
+After inserting the data, the normalized tables were validated against amazon_temp to make sure the normalization and insertion process did not result in missing or incorrectly transferred records.
+
+Product Validation:
+The total number of records in "products" table was compared with the number of distinct product_id values in amazon_temp. The counts matched, confirming that all unique products were inserted.<img width="401" height="74" alt="norm_valid_products" src="https://github.com/user-attachments/assets/22368095-39d6-4885-8b13-1b51c79dd318" />
+
+
+Seller Validation:
+The total number of records in sellers was compared with the number of distinct seller_id values in amazon_temp. The counts matched, confirming that all unique sellers were inserted.<img width="409" height="60" alt="normvalid_sellers" src="https://github.com/user-attachments/assets/f0c4497d-066d-40d0-b102-efca5c433b64" />
+
+
+User Validation:
+The total number of records in users was compared with the number of distinct user_id values in amazon_temp. The counts matched, confirming that all unique users were inserted.<img width="421" height="69" alt="normvalid_user" src="https://github.com/user-attachments/assets/88d08fa5-24ae-4587-9478-f8828ff47ec6" />
+
+
+Order Validation:
+The total number of records in orders was compared with the number of records in amazon_temp to confirm that all transaction records were retained.
+
+Order-level columns were also compared between amazon_temp and orders to check for mismatched values in user, product, seller, discount, final price, purchase date, shipping, location, device, payment method, return status, and delivery status.
+
+<img width="350" height="175" alt="image" src="https://github.com/user-attachments/assets/346ab343-87df-4769-af4f-78977ea18187" />
+
+Relationship Validation:
+Foreign-key relationships were checked to confirm that orders do not reference users, products, or sellers that are missing from their respective normalized tables.
+
+The validation results confirmed that the cleaned staging data was successfully separated into the normalized tables while maintaining the relationships between users, products, sellers, and orders.
+
+FINALLY:
+At this point, the raw data has been profiled, investigated, cleaned, validated, and normalized. The normalized database is ready for Part 2: Business Analysis, Dashboard Development, and Final Insights.
